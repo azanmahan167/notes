@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Next-Level Calendar & Voice Notes</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text: #f8fafc;
+      --subtext: #94a3b8;
+      --danger: #ef4444;
+      --success: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 850px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin-bottom: 16px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Calendar Styling */
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .calendar-header button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      text-align: center;
+    }
+
+    .day-name {
+      font-weight: bold;
+      color: var(--subtext);
+      padding-bottom: 8px;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.2s;
+      position: relative;
+    }
+
+    .day-cell:hover {
+      background: rgba(99, 102, 241, 0.2);
+    }
+
+    .day-cell.today {
+      border: 2px solid var(--accent);
+      font-weight: bold;
+    }
+
+    .badge {
+      width: 6px;
+      height: 6px;
+      background-color: var(--success);
+      border-radius: 50%;
+      position: absolute;
+      bottom: 6px;
+    }
+
+    /* Forms & Inputs */
+    input, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+    }
+
+    button.btn-action {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button.btn-action:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Voice Recorder Styling */
+    .recorder-box {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      text-align: center;
+    }
+
+    .record-btn {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .record-btn.recording {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    /* Saved Items List */
+    .item-list {
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .list-item {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .list-item .date-tag {
+      font-size: 0.75rem;
+      color: var(--subtext);
+      display: block;
+      margin-top: 4px;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    audio {
+      width: 100%;
+      height: 35px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- LEFT SIDE: CALENDAR & EVENTS -->
+    <div class="card">
+      <h2>📅 Smart Calendar</h2>
+      <div class="calendar-header">
+        <button onclick="prevMonth()">&lt; Prev</button>
+        <h3 id="monthYear"></h3>
+        <button onclick="nextMonth()">Next &gt;</button>
+      </div>
+
+      <div class="calendar-grid" id="calendarGrid"></div>
+
+      <!-- Add Birthday/Event Section -->
+      <div style="margin-top: 25px;">
+        <h2>🎂 Save Birthday / Event</h2>
+        <input type="text" id="eventTitle" placeholder="Name or Event Title..." />
+        <input type="date" id="eventDate" />
+        <button class="btn-action" onclick="saveEvent()">Save Event</button>
+      </div>
+
+      <div class="item-list" id="eventsList"></div>
+    </div>
+
+    <!-- RIGHT SIDE: NOTES & VOICE RECORDING -->
+    <div class="card">
+      <h2>📝 Quick Notes</h2>
+      <input type="text" id="noteTitle" placeholder="Note Title..." />
+      <textarea id="noteText" rows="3" placeholder="Write your note here..."></textarea>
+      <button class="btn-action" onclick="saveNote()">Save Text Note</button>
+
+      <div class="item-list" id="notesList"></div>
+
+      <!-- Voice Notes Section -->
+      <div class="recorder-box">
+        <h2>🎙️ Voice Message Note</h2>
+        <p style="font-size: 0.85rem; color: var(--subtext); margin-bottom: 12px;">
+          Recording stop karne par aaj ki date automatic lag jaye gi.
+        </p>
+        <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+          🔴 Start Recording
+        </button>
+
+        <div class="item-list" id="voiceList" style="margin-top: 15px;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // System Date Setup
+    let currentDate = new Date();
+    let events = JSON.parse(localStorage.getItem('events')) || [];
+    let notes = JSON.parse(localStorage.getItem('notes')) || [];
+    let voiceNotes = JSON.parse(localStorage.getItem('voiceNotes')) || [];
+
+    // Voice Recorder Variables
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    // Initialize Page
+    window.onload = function() {
+      renderCalendar();
+      renderEvents();
+      renderNotes();
+      renderVoiceNotes();
+    };
+
+    // --- CALENDAR LOGIC ---
+    function renderCalendar() {
+      const monthYear = document.getElementById('monthYear');
+      const calendarGrid = document.getElementById('calendarGrid');
+      
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", 
+                          "July", "August", "September", "October", "November", "December"];
+      
+      monthYear.innerText = `${monthNames[month]} ${year}`;
+      calendarGrid.innerHTML = '';
+
+      // Day Names Header
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      days.forEach(day => {
+        calendarGrid.innerHTML += `<div class="day-name">${day}</div>`;
+      });
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+
+      // Empty Cells for Offset
+      for (let i = 0; i < firstDayIndex; i++) {
+        calendarGrid.innerHTML += `<div></div>`;
+      }
+
+      // Render Days
+      for (let day = 1; day <= totalDays; day++) {
+        const fullDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+        const hasEvent = events.some(e => e.date === fullDateStr);
+
+        calendarGrid.innerHTML += `
+          <div class="day-cell ${isToday ? 'today' : ''}" onclick="selectDate('${fullDateStr}')">
+            ${day}
+            ${hasEvent ? '<div class="badge"></div>' : ''}
+          </div>
+        `;
+      }
+    }
+
+    function prevMonth() {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    function selectDate(dateStr) {
+      document.getElementById('eventDate').value = dateStr;
+    }
+
+    // --- SAVE EVENTS & BIRTHDAYS ---
+    function saveEvent() {
+      const title = document.getElementById('eventTitle').value;
+      const date = document.getElementById('eventDate').value;
+
+      if (!title || !date) return alert('Khabardai! Title aur Date dono bharein.');
+
+      events.push({ id: Date.now(), title, date });
+      localStorage.setItem('events', JSON.stringify(events));
+      document.getElementById('eventTitle').value = '';
+      
+      renderCalendar();
+      renderEvents();
+    }
+
+    function renderEvents() {
+      const container = document.getElementById('eventsList');
+      container.innerHTML = '<h3>Saved Events / Birthdays:</h3>';
+      events.forEach(item => {
+        container.innerHTML += `
+          <div class="list-item">
+            <div>
+              <strong>${item.title}</strong>
+              <span class="date-tag">📅 Date: ${item.date}</span>
+            </div>
+            <button class="delete-btn" onclick="deleteEvent(${item.id})">🗑️</button>
+          </div>
+        `;
+      });
+    }
+
+    function deleteEvent(id) {
+      events = events.filter(item => item.id !== id);
+      localStorage.setItem('events', JSON.stringify(events));
+      renderCalendar();
+      renderEvents();
+    }
+
+    // --- SAVE TEXT NOTES ---
+    function saveNote() {
+      const title = document.getElementById('noteTitle').value;
+      const text = document.getElementById('noteText').value;
+      const date = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+      if (!title || !text) return alert('Title aur Note dono likhen.');
+
+      notes.push({ id: Date.now(), title, text, date });
+      localStorage.setItem('notes', JSON.stringify(notes));
+      
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteText').value = '';
+      renderNotes();
+    }
+
+    function renderNotes() {
+      const container = document.getElementById('notesList');
+      container.innerHTML = '';
+      notes.forEach(item => {
+        container.innerHTML += `
+          <div class="list-item">
+            <div>
+              <strong>${item.title}</strong>
+              <p style="font-size:0.9rem; color:#cbd5e1;">${item.text}</p>
+              <span class="date-tag">✍️ Recorded Date: ${item.date}</span>
+            </div>
+            <button class="delete-btn" onclick="deleteNote(${item.id})">🗑️</button>
+          </div>
+        `;
+      });
+    }
+
+    function deleteNote(id) {
+      notes = notes.filter(item => item.id !== id);
+      localStorage.setItem('notes', JSON.stringify(notes));
+      renderNotes();
+    }
+
+    // --- VOICE RECORDER LOGIC (AUTOMATIC DATE STAMP) ---
+    async function toggleRecording() {
+      const btn = document.getElementById('recordBtn');
+
+      if (!isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            const reader = new FileReader();
+            
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+              const base64Audio = reader.result;
+              
+              // Automatic Aaj ki Date Format (YYYY-MM-DD)
+              const todayDate = new Date().toLocaleDateString('en-CA');
+              const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+              voiceNotes.push({
+                id: Date.now(),
+                audio: base64Audio,
+                date: `${todayDate} (${timeStamp})`
+              });
+
+              localStorage.setItem('voiceNotes', JSON.stringify(voiceNotes));
+              renderVoiceNotes();
+            };
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+          btn.classList.add('recording');
+          btn.innerText = '⏹️ Stop Recording';
+        } catch (err) {
+          alert('Microphone access denge toh hi voice message record hoga!');
+        }
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.classList.remove('recording');
+        btn.innerText = '🔴 Start Recording';
+      }
+    }
+
+    function renderVoiceNotes() {
+      const container = document.getElementById('voiceList');
+      container.innerHTML = '';
+
+      voiceNotes.forEach(item => {
+        container.innerHTML += `
+          <div class="list-item" style="flex-direction: column; align-items: flex-start;">
+            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+              <strong>🎙️ Voice Note</strong>
+              <button class="delete-btn" onclick="deleteVoiceNote(${item.id})">🗑️</button>
+            </div>
+            <audio controls src="${item.audio}"></audio>
+            <!-- Automatic Recorded Date Display -->
+            <span class="date-tag" style="color: var(--accent); font-weight: bold;">
+              📅 Recorded Date: ${item.date}
+            </span>
+          </div>
+        `;
+      });
+    }
+
+    function deleteVoiceNote(id) {
+      voiceNotes = voiceNotes.filter(item => item.id !== id);
+      localStorage.setItem('voiceNotes', JSON.stringify(voiceNotes));
+      renderVoiceNotes();
+    }
+  </script>
+</body>
+</html>
